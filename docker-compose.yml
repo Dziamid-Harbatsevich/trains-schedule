@@ -1,0 +1,73 @@
+# ---------------------------------------------------------------------------
+#  Train schedule — full stack (PHP/Apache + MySQL 8)
+#
+#  Start:   docker compose up -d --build
+#  Open:    http://localhost:8080
+#  Stop:    docker compose down
+#  Wipe DB: docker compose down -v
+# ---------------------------------------------------------------------------
+services:
+  db:
+    image: mysql:8.0
+    container_name: belta_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${DB_NAME:-belta_trains}
+      MYSQL_USER: ${DB_USER:-belta}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-belta}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # functions with ONLY_FULL_GROUP_BY / determinism checks relaxed
+      - --log-bin-trust-function-creators=1
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      # `mysqladmin ping` answers even with bad credentials once the server is
+      # up, so this stays valid while MySQL is still initialising its data dir.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    networks:
+      - belta
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: belta_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-belta_trains}
+      DB_USER: ${DB_USER:-belta}
+      DB_PASSWORD: ${DB_PASSWORD:-belta}
+      # MySQL 8 serves TLS with a self-signed certificate; inside the private
+      # compose network the app connects without certificate verification.
+      DB_SSL_MODE: ${DB_SSL_MODE:-disabled}
+      DB_INIT: "1"
+      FORCE_DB_INIT: ${FORCE_DB_INIT:-0}
+    ports:
+      - "${APP_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/index.php >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - belta
+
+volumes:
+  db_data:
+
+networks:
+  belta:
+    driver: bridge

@@ -1,0 +1,19 @@
+# Keep the build context small and avoid shipping local state.
+.git
+.gitignore
+.idea
+.vscode
+*.swp
+.DS_Store
+
+# Docs are useful in the image but not required; keep them (they are small).
+# Local env / logs / dumps must never go into the image.
+.env
+.env.local
+*.log
+dump.sql
+*.sql.gz
+
+# Node / composer artifacts (not used by this project)
+node_modules
+vendor

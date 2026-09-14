@@ -1,0 +1,18 @@
+# Локальные настройки подключения (если используется .env)
+.env
+.env.local
+
+# Логи и временные файлы
+*.log
+*.tmp
+.php-cs-fixer.cache
+
+# Редакторы / IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Экспорты и дампы
+*.sql.gz
+dump.sql
